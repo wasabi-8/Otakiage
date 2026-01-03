@@ -31,7 +31,10 @@ const ANIMATION_PARAMS = Object.freeze({
     flamePositionY: 0.4,
     cameraDistPC: 9.0,
     cameraDistMobile: 12.0,
-    mobileBreakpoint: 768
+    mobileBreakpoint: 768,
+    // 解像度設定（調整可能）
+    resolutionPC: 2.0,      // PC: 高解像度
+    resolutionMobile: 1.0   // モバイル: パフォーマンス優先
 });
 
 // モバイル判定
@@ -126,8 +129,11 @@ class Application extends PIXI.Application {
 
     constructor() {
 
+        // 解像度設定（モバイルはパフォーマンス優先で低解像度）
         if (window.devicePixelRatio > 1) {
-            PIXI.settings.RESOLUTION = 2;
+            PIXI.settings.RESOLUTION = isMobile()
+                ? ANIMATION_PARAMS.resolutionMobile
+                : ANIMATION_PARAMS.resolutionPC;
         }
 
         PIXI.settings.PRECISION_FRAGMENT = "highp";
@@ -251,6 +257,12 @@ async function startBurnAnimation() {
         const text = textarea.value;
         textarea.parentNode.removeChild(textarea);
 
+        // 元のtextareaからフォントサイズを取得（PC: 48px, モバイル: 32px/24px）
+        const originalTextarea = document.getElementById('text-input');
+        const originalFontSize = originalTextarea
+            ? parseInt(getComputedStyle(originalTextarea).fontSize)
+            : 48;
+
         // 測定用の一時div（見えない場所で計算）
         const measureDiv = document.createElement('div');
         measureDiv.style.cssText = `
@@ -258,7 +270,7 @@ async function startBurnAnimation() {
             visibility: hidden;
             width: ${rect.width * 0.9}px;
             height: ${rect.height * 0.9}px;
-            font-size: 48px;
+            font-size: ${originalFontSize}px;
             font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
             line-height: 1.8;
             white-space: pre-wrap;
@@ -269,7 +281,7 @@ async function startBurnAnimation() {
         document.body.appendChild(measureDiv);
 
         // フォントサイズを計算
-        let fontSize = 48;
+        let fontSize = originalFontSize;
         const minFontSize = 3;
         while (measureDiv.scrollHeight > measureDiv.clientHeight && fontSize > minFontSize) {
             fontSize -= 1;
@@ -595,3 +607,24 @@ window.addEventListener('load', () => {
 // ウィンドウリサイズ・回転時に炎の位置を更新
 window.addEventListener('resize', updateFlamePosition);
 window.addEventListener('orientationchange', updateFlamePosition);
+
+// モバイルキーボード表示検知
+if (window.visualViewport && isMobile()) {
+    const handleViewportChange = () => {
+        const screenInput = document.getElementById('screen-input');
+        if (!screenInput) return;
+
+        // キーボードが表示されているかどうかを判定
+        // visualViewport.height が window.innerHeight より小さい場合はキーボード表示中
+        const keyboardVisible = window.visualViewport.height < window.innerHeight * 0.8;
+
+        if (keyboardVisible) {
+            screenInput.classList.add('keyboard-visible');
+        } else {
+            screenInput.classList.remove('keyboard-visible');
+        }
+    };
+
+    window.visualViewport.addEventListener('resize', handleViewportChange);
+    window.visualViewport.addEventListener('scroll', handleViewportChange);
+}

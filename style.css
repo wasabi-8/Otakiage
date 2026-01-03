@@ -210,13 +210,26 @@ body {
 }
 
 /* ========================================
+   モバイルキーボード表示時
+   ======================================== */
+#screen-input.keyboard-visible #paper-container {
+    top: 15%;
+    transform: translate(-50%, 0);
+}
+
+#screen-input.keyboard-visible .ui-button {
+    bottom: auto;
+    top: calc(15% + 55vw);
+}
+
+/* ========================================
    モバイル対応 (768px以下)
    ======================================== */
 @media screen and (max-width: 768px) {
     /* フォントサイズ調整 */
     .ui-button {
-        font-size: 2.5rem;
-        padding: 15px 40px;
+        font-size: 2rem;
+        padding: 12px 35px;
     }
 
     #text-input {
@@ -250,8 +263,8 @@ body {
    ======================================== */
 @media screen and (max-width: 390px) {
     .ui-button {
-        font-size: 2rem;
-        padding: 12px 30px;
+        font-size: 1.5rem;
+        padding: 10px 25px;
     }
 
     #text-input {
