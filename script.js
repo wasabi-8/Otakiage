@@ -336,7 +336,7 @@ async function startBurnAnimation() {
     switchScreen('burning');
 
     // 3. 紙移動アニメーション開始
-    clone.style.transition = 'transform 2.5s ease-in-out';
+    clone.style.transition = 'transform 1s ease-in-out';
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${ANIMATION_PARAMS.paperFinalScale})`;
@@ -344,7 +344,7 @@ async function startBurnAnimation() {
     });
 
     // 4. 移動完了を待つ
-    await new Promise(resolve => setTimeout(resolve, 2500));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // 5. クローンを削除
     if (clone.parentNode) {
@@ -423,7 +423,6 @@ function startBurnShader(canvas, displayWidth, displayHeight, posX, posY) {
 
         // Stage に追加
         app.stage.addChild(sprite);
-
 
         // burnProgress を 0 → 1 にアニメーション
         const duration = BURN_PARAMS.burnSpeed * 1000; // ms
