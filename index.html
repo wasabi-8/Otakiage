@@ -54,6 +54,7 @@
         uniform float cameraY;
         uniform float lookAtY;
         uniform float swaySpeed;
+        uniform float cameraDist;
 
         #define FLAMECOL vec3(.99, .6, .35)
         #define FLAMEBLUE vec3(.1, .1, 1.)
@@ -91,6 +92,13 @@
             vec3 a = fract(vec3(p.xyx) * vec3(213.897, 653.453, 253.098));
             a += dot(a, a.yzx + 79.76);
             return fract((a.x + a.y) * a.z);
+        }
+
+        // [追加] 火の粉用ハッシュ関数
+        vec2 Hash12_Spark(float t) {
+            float x = fract(sin(t * 456.51) * 195.23);
+            float y = fract(sin((t + x) * 951.2) * 462.1);
+            return vec2(x, y);
         }
 
         vec3 N31(float p) {
@@ -186,6 +194,16 @@
             o.t = d.y;
             o.d = d.x*.8;
             o.w = wick;
+
+            // [追加] しっくい風テクスチャ（表面のみ版）
+            float stuccoAngle2 = atan(p.x, p.z);
+            float stuccoNoise = 0.0;
+            stuccoNoise += sin(stuccoAngle2 * 5.0 + p.y * 3.0) * 0.5;
+            stuccoNoise += sin(stuccoAngle2 * 11.0 - p.y * 7.0) * 0.3;
+            stuccoNoise += sin(stuccoAngle2 * 23.0 + p.y * 13.0) * 0.2;
+            float stuccoSide = S(0.3, -1.5, p.y);
+            o.d += stuccoNoise * 0.02 * stuccoSide;
+
             return o;
         }
 
@@ -386,6 +404,79 @@
             halo *= flicker;
             col += FLAMECOL * halo;
 
+// [追加] ボケ玉エフェクト（大きな柔らかいグロー）
+            float bokehTime = time * 0.3;
+            for (float i = 0.0; i < 10.0; i++) {
+                vec2 seed = Hash12_Spark(i + 50.0);
+                vec2 seed2 = Hash12_Spark(i + 150.0);
+                float life = fract(bokehTime + seed.x);
+                
+                float bokehX = (seed2.x - 0.4) * 0.2 + sin(life * 4.0 + i) * 0.15;
+                float bokehY = -0.5 + life * 2.0;
+                vec2 bokehUV = vec2(bokehX, bokehY);
+                
+                vec2 diff = uv - bokehUV;
+                float angle = seed2.x * 6.28;
+                float stretch = 0.5 + seed2.y * 0.5;
+                float cosA = cos(angle);
+                float sinA = sin(angle);
+                vec2 rotated = vec2(
+                    diff.x * cosA - diff.y * sinA,
+                    diff.x * sinA + diff.y * cosA
+                );
+                rotated.y *= stretch;
+                float bokehDist = length(rotated);
+                
+                float size = 0.001 + seed.y * 0.005;
+                float bokehBright = size / (bokehDist * bokehDist + 0.0001);
+                bokehBright = clamp(bokehBright, 0.0, 1.0);
+                bokehBright *= 0.7 + 0.3 * sin(time * 8.0 + i * 3.0);
+                bokehBright *= smoothstep(0.0, 0.1, life);
+                bokehBright *= smoothstep(1.0, 0.5, life);
+                
+                col += FLAMECOL * bokehBright * 0.15;
+            }
+
+// [追加] 火の粉エフェクト（小さい点）
+            float sparkTime = time * 0.05;
+            for (float i = 0.0; i < 20.0; i++) {
+                vec2 seed = Hash12_Spark(i + 1.0);
+                vec2 seed2 = Hash12_Spark(i + 100.0);
+                float life = fract(sparkTime + seed.x);
+                
+                float sparkX = (seed.y - 0.5) * 0.3 + sin(life * 6.0 + i) * 0.05;
+                float sparkY = 0.3 + life * 1.5;
+                vec2 sparkUV = vec2(sparkX, sparkY);
+                
+                vec2 diff = uv - sparkUV;
+                float angle = seed2.x * 6.28;
+                float stretch = 0.8 + seed2.y * 0.2;  // ←【変更】0.8〜1.0（ほぼ丸）
+                float cosA = cos(angle);
+                float sinA = sin(angle);
+                vec2 rotated = vec2(
+                    diff.x * cosA - diff.y * sinA,
+                    diff.x * sinA + diff.y * cosA
+                );
+                rotated.y *= stretch;
+                float sparkDist = length(rotated);
+                
+                // フェードイン・アウト
+                float fade = smoothstep(0.0, 0.1, life) * smoothstep(1.0, 0.5, life);
+                fade *= 0.7 + 0.3 * sin(time * 10.0 + i * 5.0);
+                
+                // コア（中心：小さく明るい白〜黄）
+                float coreSize = 0.001 + seed.y * 0.005;  // ←【変更】小さく
+                float core = smoothstep(coreSize, 0.0, sparkDist);
+                vec3 coreColor = vec3(1.0, 0.9, 0.7);
+                
+                // グロー（周辺：大きく柔らかい赤〜オレンジ）
+                float glowSize = 0.004 + seed.y * 0.016;  // ←【変更】小さく
+                float glow = smoothstep(glowSize, 0.0, sparkDist) * 0.5;
+                vec3 glowColor = vec3(1.0, 0.25, 0.05);
+                
+                col += (coreColor * core + glowColor * glow) * fade;
+            }
+
             return vec4(col, o.m);
         }
 
@@ -414,7 +505,7 @@
             mat3 rotX = mat3(c, 0., s, 0., 1., 0., s, 0., -c);
 
             vec3 lookAt = vec3(0., lookAtY, 0.);
-            float dist = 9.;
+            float dist = cameraDist;
             vec3 pos = vec3(0., cameraY, -dist)*rotX;
 
             CameraSetup(uv, pos, lookAt, 3.);
@@ -522,7 +613,6 @@
     </script>
 
     <script src="https://pixijs.download/v4.8.2/pixi.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
     <!-- 一時的に無効化: TornPaper.js -->
     <!-- <script src="https://cdn.jsdelivr.net/gh/happy358/TornPaper@v0.0.3/tornpaper.min.js"></script> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>

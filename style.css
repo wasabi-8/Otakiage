@@ -3,98 +3,16 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    /* タップハイライト無効化 */
+    -webkit-tap-highlight-color: transparent;
+    /* ズーム防止 */
+    touch-action: manipulation;
 }
 
 #view {
     position: fixed;
     top: 0;
     left: 0;
-}
-
-/* dat.GUIを超巨大化 + 右上に移動 */
-.dg.ac {
-    z-index: 1000 !important;
-    position: fixed !important;
-    top: 0 !important;
-    right: 0 !important;
-}
-
-.dg.main {
-    width: 800px !important;
-}
-
-.dg {
-    font-size: 32px !important;
-}
-
-.dg li {
-    height: auto !important;
-    min-height: 120px !important;
-    padding: 20px 0 !important;
-}
-
-.dg li.folder {
-    padding: 0 !important;
-}
-
-.dg .cr {
-    height: auto !important;
-    min-height: 100px !important;
-    border-left: 3px solid #2FA1D6 !important;
-    display: flex !important;
-    align-items: center !important;
-    padding: 15px 0 !important;
-}
-
-.dg .property-name {
-    font-size: 32px !important;
-    font-weight: bold !important;
-    width: 45% !important;
-    padding-left: 15px !important;
-    line-height: 1.5 !important;
-}
-
-.dg .c {
-    float: left !important;
-    width: 55% !important;
-}
-
-.dg input[type="text"],
-.dg input[type="number"] {
-    font-size: 28px !important;
-    height: 70px !important;
-    line-height: 70px !important;
-    padding: 10px 20px !important;
-    width: 90% !important;
-    box-sizing: border-box !important;
-    margin-right: 10px !important;
-}
-
-.dg .slider {
-    height: 40px !important;
-    margin: 15px 10px !important;
-    cursor: pointer !important;
-    width: calc(100% - 20px) !important;
-}
-
-.dg .slider-fg {
-    height: 40px !important;
-}
-
-.dg .title {
-    font-size: 38px !important;
-    font-weight: bold !important;
-    height: 90px !important;
-    line-height: 90px !important;
-    padding-left: 15px !important;
-}
-
-.dg .close-button {
-    width: 70px !important;
-    height: 70px !important;
-    font-size: 42px !important;
-    line-height: 70px !important;
-    margin-top: 10px !important;
 }
 
 /* UI Container */
@@ -106,6 +24,9 @@ body {
     height: 100%;
     pointer-events: none;
     z-index: 100;
+    /* safe-area対応 */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 /* Screen Management */
@@ -153,6 +74,10 @@ body {
     pointer-events: auto;
     transition: all 0.3s ease;
     font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+    /* タップハイライト無効化 */
+    -webkit-tap-highlight-color: transparent;
+    /* safe-area対応 */
+    bottom: calc(5% + env(safe-area-inset-bottom));
 }
 
 .ui-button:hover {
@@ -197,10 +122,15 @@ body {
     border: none;
     outline: none;
     resize: none;
-    font-size: 48px; /* 2倍に */
+    font-size: 48px;
     font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
-    color: #000; /* 真っ黒に */
+    color: #000;
     line-height: 1.8;
+    /* 紙の中のスクロールを許可 */
+    overflow-y: auto;
+    touch-action: pan-y;
+    /* タップハイライト無効化 */
+    -webkit-tap-highlight-color: transparent;
 }
 
 #text-input::placeholder {
@@ -227,6 +157,9 @@ body {
     justify-content: center;
     z-index: 300;
     pointer-events: auto;
+    /* safe-area対応 */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 .dialog-overlay.active {
@@ -239,6 +172,8 @@ body {
     border-radius: 15px;
     padding: 40px 60px;
     text-align: center;
+    /* タップハイライト無効化 */
+    -webkit-tap-highlight-color: transparent;
 }
 
 .dialog-message {
@@ -265,9 +200,79 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+    /* タップハイライト無効化 */
+    -webkit-tap-highlight-color: transparent;
 }
 
 .dialog-button:hover {
     background: rgba(255, 255, 255, 0.2);
     transform: scale(1.05);
+}
+
+/* ========================================
+   モバイル対応 (768px以下)
+   ======================================== */
+@media screen and (max-width: 768px) {
+    /* フォントサイズ調整 */
+    .ui-button {
+        font-size: 2.5rem;
+        padding: 15px 40px;
+    }
+
+    #text-input {
+        font-size: 2rem;
+    }
+
+    .dialog-message {
+        font-size: 1.5rem;
+        margin: 0 0 20px 0;
+    }
+
+    .dialog-button {
+        font-size: 1.25rem;
+        padding: 12px 30px;
+    }
+
+    .dialog-box {
+        padding: 25px 35px;
+        margin: 0 20px;
+    }
+
+    /* 紙のサイズ調整 */
+    #paper-container {
+        width: 85vw;
+        height: calc(85vw * 0.6);
+    }
+}
+
+/* ========================================
+   小型モバイル対応 (390px以下)
+   ======================================== */
+@media screen and (max-width: 390px) {
+    .ui-button {
+        font-size: 2rem;
+        padding: 12px 30px;
+    }
+
+    #text-input {
+        font-size: 1.5rem;
+    }
+
+    .dialog-message {
+        font-size: 1.25rem;
+    }
+
+    .dialog-button {
+        font-size: 1rem;
+        padding: 10px 20px;
+    }
+
+    .dialog-box {
+        padding: 20px 25px;
+    }
+
+    #paper-container {
+        width: 90vw;
+        height: calc(90vw * 0.6);
+    }
 }

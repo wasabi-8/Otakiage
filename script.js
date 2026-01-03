@@ -1,17 +1,15 @@
-console.clear();
-
 const candleFlameFrag = document.querySelector("#candleflame-frag").textContent;
 const burnFrag = document.querySelector("#burn-frag").textContent;
 
 // Candle flame parameters
-const flameParams = {
+const FLAME_PARAMS = Object.freeze({
     cameraY: 2.5,   // 傾斜
     lookAtY: 1.5,   // 縦位置
     swaySpeed: 3.0  // 揺れ速度
-};
+});
 
 // Burn effect parameters
-const burnParams = {
+const BURN_PARAMS = Object.freeze({
     burnSpeed: 3.0,  // seconds
     burnEdgeIntensity: 1.5,
     burnEdgeWidth: 0.05,
@@ -25,7 +23,26 @@ const burnParams = {
     charColorR: 0.0,
     charColorG: 0.0,
     charColorB: 0.0
-};
+});
+
+// Animation parameters
+const ANIMATION_PARAMS = Object.freeze({
+    paperFinalScale: 0.8,
+    flamePositionY: 0.4,
+    cameraDistPC: 9.0,
+    cameraDistMobile: 12.0,
+    mobileBreakpoint: 768
+});
+
+// モバイル判定
+function isMobile() {
+    return window.innerWidth <= ANIMATION_PARAMS.mobileBreakpoint;
+}
+
+// カメラ距離を取得
+function getCameraDist() {
+    return isMobile() ? ANIMATION_PARAMS.cameraDistMobile : ANIMATION_PARAMS.cameraDistPC;
+}
 
 //
 // BURN FILTER
@@ -33,70 +50,38 @@ const burnParams = {
 class BurnFilter extends PIXI.Filter {
 
     constructor(paperTexture) {
-        console.log('BurnFilter constructor called');
-        console.log('burnFrag exists:', typeof burnFrag !== 'undefined');
-        console.log('paperTexture:', paperTexture);
-
-        try {
-            super(null, burnFrag);
-            console.log('PIXI.Filter super() succeeded');
-        } catch (error) {
-            console.error('PIXI.Filter super() failed:', error);
-            throw error;
-        }
+        super(null, burnFrag);
 
         this.uniforms.dimensions = new Float32Array(2);
         this.uniforms.paperTexture = paperTexture;
         this.uniforms.burnProgress = 0.0;
         this.uniforms.noiseSeed = Math.random();
-        this.uniforms.burnNoiseScale = burnParams.burnNoiseScale;
-        this.uniforms.burnEdgeWidth1 = burnParams.burnEdgeWidth;
-        this.uniforms.burnEdgeWidth2 = burnParams.burnEdgeWidth * 5.0;
+        this.uniforms.burnNoiseScale = BURN_PARAMS.burnNoiseScale;
+        this.uniforms.burnEdgeWidth1 = BURN_PARAMS.burnEdgeWidth;
+        this.uniforms.burnEdgeWidth2 = BURN_PARAMS.burnEdgeWidth * 5.0;
         this.uniforms.innerColor = new Float32Array([
-            burnParams.innerColorR,
-            burnParams.innerColorG,
-            burnParams.innerColorB
+            BURN_PARAMS.innerColorR,
+            BURN_PARAMS.innerColorG,
+            BURN_PARAMS.innerColorB
         ]);
         this.uniforms.outerColor = new Float32Array([
-            burnParams.outerColorR,
-            burnParams.outerColorG,
-            burnParams.outerColorB
+            BURN_PARAMS.outerColorR,
+            BURN_PARAMS.outerColorG,
+            BURN_PARAMS.outerColorB
         ]);
         this.uniforms.charColor = new Float32Array([
-            burnParams.charColorR,
-            burnParams.charColorG,
-            burnParams.charColorB
+            BURN_PARAMS.charColorR,
+            BURN_PARAMS.charColorG,
+            BURN_PARAMS.charColorB
         ]);
         this.uniforms.colorNoise = 500.0;
 
         this.padding = 0;
-
-        console.log('BurnFilter uniforms set:', this.uniforms);
     }
 
     apply(filterManager, input, output, clear) {
-        if (!this._logged) {
-            console.log('BurnFilter apply - input.sourceFrame:', input.sourceFrame.width, input.sourceFrame.height);
-            console.log('BurnFilter apply - input.size:', input.size.width, input.size.height);
-            this._logged = true;
-        }
-
         this.uniforms.dimensions[0] = input.size.width;
         this.uniforms.dimensions[1] = input.size.height;
-
-        // Update parameters every frame
-        this.uniforms.burnNoiseScale = burnParams.burnNoiseScale;
-        this.uniforms.burnEdgeWidth1 = burnParams.burnEdgeWidth;
-        this.uniforms.burnEdgeWidth2 = burnParams.burnEdgeWidth * 5.0;
-        this.uniforms.innerColor[0] = burnParams.innerColorR * burnParams.burnEdgeIntensity;
-        this.uniforms.innerColor[1] = burnParams.innerColorG * burnParams.burnEdgeIntensity;
-        this.uniforms.innerColor[2] = burnParams.innerColorB * burnParams.burnEdgeIntensity;
-        this.uniforms.outerColor[0] = burnParams.outerColorR * burnParams.burnEdgeIntensity;
-        this.uniforms.outerColor[1] = burnParams.outerColorG * burnParams.burnEdgeIntensity;
-        this.uniforms.outerColor[2] = burnParams.outerColorB * burnParams.burnEdgeIntensity;
-        this.uniforms.charColor[0] = burnParams.charColorR;
-        this.uniforms.charColor[1] = burnParams.charColorG;
-        this.uniforms.charColor[2] = burnParams.charColorB;
 
         filterManager.applyFilter(this, input, output, clear);
     }
@@ -112,19 +97,22 @@ class CandleFlameFilter extends PIXI.Filter {
 
         this.uniforms.dimensions = new Float32Array(2);
         this.uniforms.time = 0.0;
-        this.uniforms.cameraY = flameParams.cameraY;
-        this.uniforms.lookAtY = flameParams.lookAtY;
-        this.uniforms.swaySpeed = flameParams.swaySpeed;
+        this.uniforms.cameraY = FLAME_PARAMS.cameraY;
+        this.uniforms.lookAtY = FLAME_PARAMS.lookAtY;
+        this.uniforms.swaySpeed = FLAME_PARAMS.swaySpeed;
+        this.uniforms.cameraDist = getCameraDist();
         this.time = 0.0;
+    }
+
+    // カメラ距離を更新（画面回転・リサイズ時）
+    updateCameraDist() {
+        this.uniforms.cameraDist = getCameraDist();
     }
 
     apply(filterManager, input, output, clear) {
         this.uniforms.dimensions[0] = input.sourceFrame.width;
         this.uniforms.dimensions[1] = input.sourceFrame.height;
         this.uniforms.time = this.time;
-        this.uniforms.cameraY = flameParams.cameraY;
-        this.uniforms.lookAtY = flameParams.lookAtY;
-        this.uniforms.swaySpeed = flameParams.swaySpeed;
 
         filterManager.applyFilter(this, input, output, clear);
     }
@@ -167,7 +155,14 @@ class Application extends PIXI.Application {
         this.stage.addChild(flameContainer);
 
         this.ticker.add(this.update, this);
-        window.addEventListener("resize", () => this.isResized = true);
+
+        // リサイズ・回転時の処理
+        const handleResize = () => {
+            this.isResized = true;
+            this.flame.updateCameraDist();
+        };
+        window.addEventListener("resize", handleResize);
+        window.addEventListener("orientationchange", handleResize);
     }
 
     update(delta) {
@@ -185,23 +180,6 @@ let app; // グローバル変数として宣言
 let flameContainer; // 炎用コンテナ
 app = new Application();
 
-// GUI initialization
-const gui = new dat.GUI();
-
-// Burn effect controls
-const burnFolder = gui.addFolder('燃焼エフェクト');
-const burnBasicFolder = burnFolder.addFolder('基本設定');
-burnBasicFolder.add(burnParams, 'burnSpeed', 1.0, 10.0).name('燃焼速度（秒）');
-burnBasicFolder.add(burnParams, 'burnNoiseScale', 0.1, 0.5).name('ノイズの細かさ');
-burnBasicFolder.open();
-
-burnFolder.open();
-
-// Flame sway controls
-const flameFolder = gui.addFolder('炎の設定');
-flameFolder.add(flameParams, 'swaySpeed', 0.1, 10.0).name('揺れ速度');
-flameFolder.open();
-
 //
 // UI STATE MANAGEMENT
 // ===========================================================================
@@ -210,12 +188,10 @@ let currentState = 'top'; // 'top' | 'input' | 'burning'
 // 炎の位置を一元管理
 const flamePosition = {
     x: window.innerWidth / 2,  // 画面中央
-    y: window.innerHeight * 0.4  // 画面上寄り（40%の位置）
+    y: window.innerHeight * ANIMATION_PARAMS.flamePositionY  // 画面上寄り
 };
 
 function switchScreen(newState) {
-    console.log('Switching to state:', newState);
-
     // すべてのスクリーンから active クラスを削除
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -231,9 +207,6 @@ function switchScreen(newState) {
     const targetScreen = document.getElementById(screenMap[newState]);
     if (targetScreen) {
         targetScreen.classList.add('active');
-        console.log('Activated screen:', screenMap[newState]);
-    } else {
-        console.error('Screen not found:', screenMap[newState]);
     }
 
     currentState = newState;
@@ -245,13 +218,8 @@ function selectRandomPaperTexture() {
     const randomIndex = Math.floor(Math.random() * paperCount) + 1;
     const paperElement = document.querySelector('.paper');
 
-    console.log('Selecting random paper texture:', randomIndex);
-
     if (paperElement) {
         paperElement.style.backgroundImage = `url('textures/paper${randomIndex}.jpg')`;
-        console.log('Paper texture applied:', `textures/paper${randomIndex}.jpg`);
-    } else {
-        console.error('.paper element not found');
     }
 }
 
@@ -261,7 +229,6 @@ async function startBurnAnimation() {
     const paper = document.querySelector('.paper');
 
     if (!paperContainer || !paper) {
-        console.error('Paper elements not found');
         return;
     }
 
@@ -308,7 +275,6 @@ async function startBurnAnimation() {
             fontSize -= 1;
             measureDiv.style.fontSize = fontSize + 'px';
         }
-        console.log('Calculated font size:', fontSize);
 
         // 3pxでも収まらない場合は省略記号を追加
         const isOverflow = measureDiv.scrollHeight > measureDiv.clientHeight;
@@ -358,20 +324,12 @@ async function startBurnAnimation() {
     // 1. requestAnimationFrame で1フレーム待ってからキャプチャ
     await new Promise(resolve => requestAnimationFrame(resolve));
 
-    console.log('Starting html2canvas capture (before animation)...');
     const canvas = await html2canvas(clone, {
         backgroundColor: null,
         logging: false,
         scale: window.devicePixelRatio,  // 高DPIデバイスで高解像度キャプチャ
         width: rect.width,
         height: rect.height
-    }).then(canvas => {
-        console.log('html2canvas completed (before animation)');
-        console.log('Canvas size:', canvas.width, 'x', canvas.height);
-        return canvas;
-    }).catch(error => {
-        console.error('html2canvas error:', error);
-        throw error;
     });
 
     // 2. キャプチャ完了後に元の画面を非表示
@@ -381,23 +339,21 @@ async function startBurnAnimation() {
     clone.style.transition = 'transform 2.5s ease-in-out';
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-            clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(0.9)`;
+            clone.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${ANIMATION_PARAMS.paperFinalScale})`;
         });
     });
 
     // 4. 移動完了を待つ
     await new Promise(resolve => setTimeout(resolve, 2500));
-    console.log('Paper movement animation completed');
 
     // 5. クローンを削除
     if (clone.parentNode) {
         clone.parentNode.removeChild(clone);
-        console.log('Clone removed');
     }
 
     // 6. PixiJS で燃焼シェーダーを開始（小さくなったサイズで）
     // 移動後のサイズと位置を計算
-    const finalScale = 0.9;
+    const finalScale = ANIMATION_PARAMS.paperFinalScale;
     const finalWidth = rect.width * finalScale;
     const finalHeight = rect.height * finalScale;
 
@@ -405,8 +361,6 @@ async function startBurnAnimation() {
     const finalX = paperCenterX + deltaX;
     const finalY = paperCenterY + deltaY;
 
-    console.log('Calling startBurnShader with size:', finalWidth, 'x', finalHeight);
-    console.log('Calling startBurnShader with position:', finalX, 'x', finalY);
     startBurnShader(canvas, finalWidth, finalHeight, finalX, finalY);
 }
 
@@ -444,8 +398,6 @@ function previewBurnEffect() {
 
 // 燃焼シェーダーアニメーション
 function startBurnShader(canvas, displayWidth, displayHeight, posX, posY) {
-    console.log('startBurnShader:', canvas.width, 'x', canvas.height, '→', displayWidth, 'x', displayHeight, 'at', posX, posY);
-
     try {
         // Canvas から PixiJS テクスチャを作成
         const baseTexture = new PIXI.BaseTexture(canvas);
@@ -461,8 +413,8 @@ function startBurnShader(canvas, displayWidth, displayHeight, posX, posY) {
         sprite.height = displayHeight;
 
         // 位置を設定（渡された位置、またはデフォルト）
-        sprite.x = posX !== undefined ? posX : window.innerWidth / 2;
-        sprite.y = posY !== undefined ? posY : window.innerHeight * 0.4;
+        sprite.x = posX !== undefined ? posX : flamePosition.x;
+        sprite.y = posY !== undefined ? posY : flamePosition.y;
         sprite.anchor.set(0.5);
 
         // BurnFilter を適用
@@ -472,8 +424,9 @@ function startBurnShader(canvas, displayWidth, displayHeight, posX, posY) {
         // Stage に追加
         app.stage.addChild(sprite);
 
+
         // burnProgress を 0 → 1 にアニメーション
-        const duration = burnParams.burnSpeed * 1000; // ms
+        const duration = BURN_PARAMS.burnSpeed * 1000; // ms
         const startTime = Date.now();
 
         const animate = () => {
@@ -486,7 +439,6 @@ function startBurnShader(canvas, displayWidth, displayHeight, posX, posY) {
                 requestAnimationFrame(animate);
             } else {
                 // 燃焼完了
-                console.log('Burn animation completed');
                 app.stage.removeChild(sprite);
                 sprite.destroy();
                 paperTexture.destroy(true);  // baseTexture も一緒に破棄
@@ -502,14 +454,14 @@ function startBurnShader(canvas, displayWidth, displayHeight, posX, posY) {
 
         animate();
     } catch (error) {
-        console.error('Error in startBurnShader:', error);
+        console.error('燃焼シェーダーエラー:', error);
+        switchScreen('top');
     }
 }
 
 // TornPaper初期化
 function initTornPaper() {
     if (typeof Tornpaper === 'undefined') {
-        console.error('Tornpaper library not loaded');
         return;
     }
 
@@ -526,14 +478,12 @@ function initTornPaper() {
         grungeFrequency: 0,  // grungeを無効化
         grungeScale: 0
     });
-
-    console.log('TornPaper initialized');
 }
 
 // ウィンドウリサイズ時に炎の位置を更新
 function updateFlamePosition() {
     flamePosition.x = window.innerWidth / 2;
-    flamePosition.y = window.innerHeight * 0.4;
+    flamePosition.y = window.innerHeight * ANIMATION_PARAMS.flamePositionY;
 }
 
 // 確認ダイアログ表示
@@ -554,9 +504,6 @@ function hideConfirmDialog() {
 
 // ページ読み込み完了後に初期化
 window.addEventListener('load', () => {
-    console.log('Page loaded, initializing...');
-    console.log('Tornpaper library loaded:', typeof Tornpaper !== 'undefined');
-
     selectRandomPaperTexture(); // ランダムにテクスチャを選択
     updateFlamePosition(); // 炎の位置を初期化
 
@@ -571,9 +518,15 @@ window.addEventListener('load', () => {
 
     if (btnWrite) {
         btnWrite.addEventListener('click', () => {
-            console.log('Write button clicked');
             selectRandomPaperTexture(); // 毎回新しいランダムテクスチャを選択
             switchScreen('input');
+
+            // テキストエリアに自動フォーカス（画面切り替え後）
+            requestAnimationFrame(() => {
+                if (textInput) {
+                    textInput.focus();
+                }
+            });
 
             // 一時的に無効化: TornPaper
             // requestAnimationFrame(() => {
@@ -582,53 +535,39 @@ window.addEventListener('load', () => {
             //     });
             // });
         });
-    } else {
-        console.error('btn-write not found');
     }
 
     if (btnBurn) {
         btnBurn.addEventListener('click', () => {
-            console.log('Burn button clicked');
-            startBurnAnimation();
+            startBurnAnimation().catch(error => {
+                console.error('燃焼アニメーションエラー:', error);
+                switchScreen('top');
+            });
         });
-    } else {
-        console.error('btn-burn not found');
     }
 
     // 紙の外側をタップした時の処理
     if (screenInput) {
         screenInput.addEventListener('click', (e) => {
-            console.log('Screen input clicked, currentState:', currentState);
-            console.log('Target:', e.target);
-            console.log('PaperContainer contains target:', paperContainer ? paperContainer.contains(e.target) : 'no container');
-
             // 入力画面が表示されている時のみ
             if (currentState !== 'input') return;
 
             // 「燃やす」ボタンをクリックした場合は無視
-            const btnBurn = document.getElementById('btn-burn');
             if (btnBurn && (e.target === btnBurn || btnBurn.contains(e.target))) {
-                console.log('Burn button clicked, ignoring');
                 return;
             }
 
             // 紙の範囲外をクリックした場合
             if (paperContainer && !paperContainer.contains(e.target)) {
-                console.log('Clicked outside paper');
                 const inputValue = textInput ? textInput.value : '';
-                console.log('Input value length:', inputValue.length);
 
                 if (inputValue.length === 0) {
                     // 未入力なら即座にTOP画面に戻る
-                    console.log('Empty input, returning to top');
                     switchScreen('top');
                 } else {
                     // 入力済みなら確認ダイアログを表示
-                    console.log('Has input, showing dialog');
                     showConfirmDialog();
                 }
-            } else {
-                console.log('Clicked inside paper');
             }
         });
     }
@@ -654,7 +593,6 @@ window.addEventListener('load', () => {
     }
 });
 
-// ウィンドウリサイズ時に炎の位置を更新
-window.addEventListener('resize', () => {
-    updateFlamePosition();
-});
+// ウィンドウリサイズ・回転時に炎の位置を更新
+window.addEventListener('resize', updateFlamePosition);
+window.addEventListener('orientationchange', updateFlamePosition);
