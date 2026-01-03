@@ -1,0 +1,273 @@
+body {
+    background: #000;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#view {
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+/* dat.GUIを超巨大化 + 右上に移動 */
+.dg.ac {
+    z-index: 1000 !important;
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+}
+
+.dg.main {
+    width: 800px !important;
+}
+
+.dg {
+    font-size: 32px !important;
+}
+
+.dg li {
+    height: auto !important;
+    min-height: 120px !important;
+    padding: 20px 0 !important;
+}
+
+.dg li.folder {
+    padding: 0 !important;
+}
+
+.dg .cr {
+    height: auto !important;
+    min-height: 100px !important;
+    border-left: 3px solid #2FA1D6 !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 15px 0 !important;
+}
+
+.dg .property-name {
+    font-size: 32px !important;
+    font-weight: bold !important;
+    width: 45% !important;
+    padding-left: 15px !important;
+    line-height: 1.5 !important;
+}
+
+.dg .c {
+    float: left !important;
+    width: 55% !important;
+}
+
+.dg input[type="text"],
+.dg input[type="number"] {
+    font-size: 28px !important;
+    height: 70px !important;
+    line-height: 70px !important;
+    padding: 10px 20px !important;
+    width: 90% !important;
+    box-sizing: border-box !important;
+    margin-right: 10px !important;
+}
+
+.dg .slider {
+    height: 40px !important;
+    margin: 15px 10px !important;
+    cursor: pointer !important;
+    width: calc(100% - 20px) !important;
+}
+
+.dg .slider-fg {
+    height: 40px !important;
+}
+
+.dg .title {
+    font-size: 38px !important;
+    font-weight: bold !important;
+    height: 90px !important;
+    line-height: 90px !important;
+    padding-left: 15px !important;
+}
+
+.dg .close-button {
+    width: 70px !important;
+    height: 70px !important;
+    font-size: 42px !important;
+    line-height: 70px !important;
+    margin-top: 10px !important;
+}
+
+/* UI Container */
+#ui-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+}
+
+/* Screen Management */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+
+.screen.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+}
+
+#screen-input.active {
+    pointer-events: auto;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* UI Button */
+.ui-button {
+    position: absolute;
+    bottom: 5%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 20px 60px;
+    font-size: 50px;
+    font-weight: bold;
+    color: white;
+    background: rgba(0, 0, 0, 0.3);
+    border: 3px solid white;
+    border-radius: 10px;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+}
+
+.ui-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(-50%) scale(1.05);
+}
+
+/* Paper Container */
+#paper-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70vw; /* レスポンシブ対応 */
+    max-width: 800px;
+    height: calc(70vw * 0.6); /* 横長: 5:3 ratio */
+    max-height: 480px;
+    pointer-events: auto;
+    overflow: visible; /* TornPaperの切り抜きが見えるように */
+}
+
+.paper {
+    width: 100%;
+    height: 100%;
+    /* background-image はJavaScriptで動的に設定 */
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5%; /* レスポンシブ対応 */
+    box-sizing: border-box;
+    /* 一時的に無効化: TornPaper filter */
+    /* filter: url(#filter_tornpaper); */
+}
+
+/* Textarea */
+#text-input {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-size: 48px; /* 2倍に */
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+    color: #000; /* 真っ黒に */
+    line-height: 1.8;
+}
+
+#text-input::placeholder {
+    color: rgba(0, 0, 0, 0.4);
+}
+
+/* 燃焼アニメーション用 */
+#paper-animation-clone {
+    position: fixed;
+    pointer-events: none;
+    z-index: 200;
+}
+
+/* 確認ダイアログ */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    pointer-events: auto;
+}
+
+.dialog-overlay.active {
+    display: flex;
+}
+
+.dialog-box {
+    background: rgba(20, 20, 20, 0.95);
+    border: 3px solid white;
+    border-radius: 15px;
+    padding: 40px 60px;
+    text-align: center;
+}
+
+.dialog-message {
+    font-size: 36px;
+    color: white;
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+    margin: 0 0 30px 0;
+}
+
+.dialog-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.dialog-button {
+    padding: 15px 50px;
+    font-size: 28px;
+    font-weight: bold;
+    color: white;
+    background: rgba(0, 0, 0, 0.3);
+    border: 3px solid white;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+}
+
+.dialog-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}

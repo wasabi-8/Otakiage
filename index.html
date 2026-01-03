@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お焚き上げ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="view"></canvas>
+
+    <!-- UI Elements -->
+    <div id="ui-container">
+        <!-- 画面1: TOP -->
+        <div id="screen-top" class="screen active">
+            <button id="btn-write" class="ui-button">書く</button>
+        </div>
+
+        <!-- 画面2: 入力画面 -->
+        <div id="screen-input" class="screen">
+            <div id="paper-container">
+                <div class="paper">
+                    <textarea id="text-input" placeholder="燃やしたいことを記入"></textarea>
+                </div>
+            </div>
+            <button id="btn-burn" class="ui-button">燃やす</button>
+        </div>
+
+        <!-- 画面3: 燃焼アニメーション（後で実装） -->
+        <div id="screen-burning" class="screen">
+        </div>
+
+        <!-- 確認ダイアログ -->
+        <div id="confirm-dialog" class="dialog-overlay">
+            <div class="dialog-box">
+                <p class="dialog-message">入力をやめる</p>
+                <div class="dialog-buttons">
+                    <button id="btn-confirm-yes" class="dialog-button">はい</button>
+                    <button id="btn-confirm-no" class="dialog-button">いいえ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script id="candleflame-frag" type="x-shader/x-fragment">
+        // 3D Raymarched Japanese Candle with Flame
+        // Based on "Candle" by Martijn Steinrucken aka BigWings - 2019
+        // Converted for PixiJS
+
+        varying vec2 vTextureCoord;
+        uniform vec4 filterArea;
+        uniform vec2 dimensions;
+        uniform float time;
+        uniform float cameraY;
+        uniform float lookAtY;
+        uniform float swaySpeed;
+
+        #define FLAMECOL vec3(.99, .6, .35)
+        #define FLAMEBLUE vec3(.1, .1, 1.)
+        #define CANDLECOL vec3(.71, .094, .106)
+
+        #define INVERTMOUSE -1.
+        #define MAX_STEPS 100
+        #define MIN_DISTANCE 0.1
+        #define MAX_DISTANCE 10.
+        #define RAY_PRECISION 0.01
+        #define S(x,y,z) smoothstep(x,y,z)
+        #define B(x,y,z,w) S(x-z, x+z, w)*S(y+z, y-z, w)
+        #define sat(x) clamp(x,0.,1.)
+        #define SIN(x) sin(x)*.5+.5
+        #define BG_STEPS 20.
+        #define BOKEH_SIZE .04
+
+        const vec3 lf=vec3(1., 0., 0.);
+        const vec3 up=vec3(0., 1., 0.);
+        const vec3 fw=vec3(0., 0., 1.);
+        const float halfpi = 1.570796326794896619;
+        const float pi = 3.141592653589793238;
+        const float twopi = 6.283185307179586;
+
+        vec2 m;
+        vec3 bg;
+        float gWindStrength;
+        float gWindDir;
+
+        float N(float x) { return fract(sin(x)*5346.1764); }
+        float N2(float x, float y) { return N(x + y*23414.324); }
+        float LN(float x) { return mix(N(floor(x)), N(floor(x+1.)), fract(x)); }
+
+        float N21(vec2 p) {
+            vec3 a = fract(vec3(p.xyx) * vec3(213.897, 653.453, 253.098));
+            a += dot(a, a.yzx + 79.76);
+            return fract((a.x + a.y) * a.z);
+        }
+
+        vec3 N31(float p) {
+            vec3 p3 = fract(vec3(p) * vec3(.1031,.11369,.13787));
+            p3 += dot(p3, p3.yzx + 19.19);
+            return fract(vec3((p3.x + p3.y)*p3.z, (p3.x+p3.z)*p3.y, (p3.y+p3.z)*p3.x));
+        }
+
+        struct ray { vec3 o; vec3 d; };
+        struct camera {
+            vec3 p; vec3 forward; vec3 left; vec3 up;
+            vec3 center; vec3 i; ray ray; vec3 lookAt; float zoom;
+        };
+        struct de {
+            float d; float b; float m; float f; float w; float fd; float t; float s; float sd;
+            vec2 uv; vec3 pos; vec3 nor; float fresnel;
+        };
+        struct rc { vec3 id; vec3 h; vec3 p; };
+
+        camera cam;
+
+        void CameraSetup(vec2 uv, vec3 position, vec3 lookAt, float zoom) {
+            cam.p = position;
+            cam.lookAt = lookAt;
+            cam.forward = normalize(cam.lookAt-cam.p);
+            cam.left = cross(up, cam.forward);
+            cam.up = cross(cam.forward, cam.left);
+            cam.zoom = zoom;
+            cam.center = cam.p+cam.forward*cam.zoom;
+            cam.i = cam.center+cam.left*uv.x+cam.up*uv.y;
+            cam.ray.o = cam.p;
+            cam.ray.d = normalize(cam.i-cam.p);
+        }
+
+        float remap01(float a, float b, float t) { return sat(t-a)/(b-a); }
+        float DistLine(vec3 ro, vec3 rd, vec3 p) { return length(cross(p-ro, rd)); }
+
+        vec2 smin(float a, float b, float k) {
+            float h = clamp(0.5+0.5*(b-a)/k, 0.0, 1.0);
+            return vec2(mix(b, a, h) - k*h*(1.0-h), h);
+        }
+        vec2 smax(float a, float b, float k) {
+            float h = clamp(0.5 + 0.5*(b-a)/k, 0.0, 1.0);
+            return vec2(mix(a, b, h) + k*h*(1.0-h), h);
+        }
+
+        float sdSphere(vec3 p, vec3 pos, float s) { return length(p-pos)-s; }
+        float sdCappedCylinder(vec3 p, vec2 h) {
+            vec2 d = abs(vec2(length(p.xz),p.y)) - h;
+            return min(max(d.x,d.y),0.0) + length(max(d,0.0));
+        }
+        float sdRoundCone(vec3 p, float r1, float r2, float h) {
+            vec2 q = vec2(length(p.xz), p.y);
+            float b = (r1-r2)/h;
+            float a = sqrt(1.0-b*b);
+            float k = dot(q,vec2(-b,a));
+            if(k<0.0) return length(q) - r1;
+            if(k>a*h) return length(q-vec2(0.0,h)) - r2;
+            return dot(q, vec2(a,b)) - r1;
+        }
+        vec3 opCheapBend(vec3 p, float strength) {
+            float c = cos(strength*p.y);
+            float s = sin(strength*p.y);
+            mat2 m = mat2(c,-s,s,c);
+            return vec3(m*p.xy,p.z);
+        }
+
+        de map(vec3 p) {
+            de o;
+            o.m = 1.;
+            float t = time;
+
+            p.y += (sin(p.x*10.)*sin(p.y*12.))*.01;
+            float r = length(p.xz);
+            float ripple = sin(r * 20.0) * 0.05 * S(1.2, 0.3, r);
+            ripple += sin(r * 35.0) * 0.02 * S(0.8, 0.2, r);
+            p.y += ripple * S(-0.5, 0.5, p.y);
+
+            float taper = 1.0 + (p.y + 0.5) * 0.15;
+            vec3 tp = p;
+            tp.xz /= taper;
+
+            float outside = sdCappedCylinder(tp+vec3(0., 2., 0.), vec2(1.15, 2.2))-.1;
+            float inside = sdCappedCylinder(tp-vec3(0., 2.2, 0.), vec2(1., 2.))-.3;
+            vec2 candle = smax(outside, -inside, .1);
+
+            vec3 q = p+vec3(0., .15, 0.);
+            float angle = atan(q.x, q.z);
+            float wick = sdRoundCone(q, .20, .10, .65)-.02;
+            vec2 d = smin(candle.x, wick, .2);
+
+            o.uv = vec2(angle, q.y);
+            o.t = d.y;
+            o.d = d.x*.8;
+            o.w = wick;
+            return o;
+        }
+
+        de fmap(vec3 p, float n) {
+            float t = time*2.;
+            de o;
+            o.m = 1.;
+            p.z *= 1.5;
+
+            vec3 q = opCheapBend(p+vec3(0., 0.2, 0.), 1.);
+            float wick = sdRoundCone(q, .12, .03, .4)-.01;
+            float d = wick;
+            float flame = wick;
+
+            float t2 = t*.2;
+            float baseTop = 5.0 - n*n;
+            float top = baseTop + gWindStrength * 5.5;
+            float windBendBase = gWindStrength * gWindDir * 20.8;
+
+            for(float i=0.; i<1.; i+=1./20.) {
+                float y = mix(.1, top, i);
+                float baseSwing = pow(abs(sin(y-t*swaySpeed)), 3.) * .5 * n * p.y * n * n * n;
+                float bendStart = 1.;
+                float bendFactor = max(0.0, (i - bendStart) / (1.0 - bendStart));
+                float windBend = windBendBase * bendFactor;
+                float x = baseSwing + windBend;
+
+                float size = mix(.25, .07, i*i);
+                float sizeFlicker = 1.0 + 0.1 * sin(i * 50.0 + t * 15.0) * sin(i * 30.0 + t * 11.0);
+                size *= sizeFlicker;
+                float smth = mix(.5, .05, i*i);
+
+                float skipThreshold = 0.75 - gWindStrength * 0.2;
+                float skipNoise = N(i * 137.0 + floor(t * 4.0));
+                if(i > skipThreshold && skipNoise > 0.5 && gWindStrength > 0.3) continue;
+
+                flame = smin(flame, sdSphere(p, vec3(x, y, .0), size), smth).x;
+            }
+
+            d = min(d, flame);
+            d = max(d, -sdSphere(p, vec3(-.2, -.5, .0), .5));
+            o.d = d/1.5;
+            return o;
+        }
+
+        de castRay(ray r, float n) {
+            float dmin = 1.0;
+            float dmax = 100.0;
+            float precis = RAY_PRECISION;
+
+            de o;
+            o.d = dmin;
+            o.m = -1.0;
+            o.w = 1000.;
+            o.s = 1000.;
+            de res;
+
+            for(int i=0; i<MAX_STEPS; i++) {
+                res = map(r.o+r.d*o.d);
+                if(res.d<precis || o.d>dmax) break;
+                float d = o.d;
+                float w = o.w;
+                o = res;
+                if(w<o.w) o.w = w;
+                o.d += d;
+            }
+
+            if(o.d>dmax) o.m=-1.0;
+            o.s = 1000.;
+            o.fd = 0.;
+
+            for(int i=0; i<MAX_STEPS; i++) {
+                res = fmap(r.o+r.d*o.fd, n);
+                if(res.d<precis || o.fd>dmax) break;
+                if(res.d<o.s) {
+                    o.s = res.d;
+                    o.sd = o.fd;
+                }
+                o.fd += res.d;
+            }
+
+            if(res.d<precis) o.f=1.;
+            return o;
+        }
+
+        vec3 Background(ray r) { return vec3(0.); }
+
+        vec3 calcNormal(de o) {
+            vec3 eps = vec3(0.001, 0.0, 0.0);
+            vec3 nor = vec3(
+                map(o.pos+eps.xyy).d - map(o.pos-eps.xyy).d,
+                map(o.pos+eps.yxy).d - map(o.pos-eps.yxy).d,
+                map(o.pos+eps.yyx).d - map(o.pos-eps.yyx).d);
+            return normalize(nor);
+        }
+
+        vec3 FlameNormal(vec3 p, float n) {
+            vec3 eps = vec3(0.001, 0.0, 0.0);
+            vec3 nor = vec3(
+                fmap(p+eps.xyy, n).d - fmap(p-eps.xyy, n).d,
+                fmap(p+eps.yxy, n).d - fmap(p-eps.yxy, n).d,
+                fmap(p+eps.yyx, n).d - fmap(p-eps.yyx, n).d);
+            return normalize(nor);
+        }
+
+        de GetShadingBasics(de o, ray r) {
+            o.pos = r.o + o.d*r.d;
+            o.nor = calcNormal(o);
+            o.fresnel = dot(o.nor, r.d);
+            return o;
+        }
+
+        vec4 render(vec2 uv, ray camRay, float n) {
+            vec3 col = vec3(0.);
+            de o = castRay(camRay, n);
+            col = Background(camRay);
+
+            if(o.m>0.) {
+                o = GetShadingBasics(o, camRay);
+                vec3 p = o.pos;
+                float angle = atan(p.x, p.z);
+
+                float inside = S(1.3, .9, length(o.pos.xz));
+                float dif = dot(o.nor, camRay.d)*.5+.5;
+                float sss = S((n*n)*.2-1.5, -.0, p.y)*3.;
+                sss += sin(angle*15.)*.05;
+                sss *= (1.-inside);
+                dif = max(dif, sss);
+                col = vec3(.3, .3, .4)*dif;
+
+                float lt = time;
+                float lx = sin(lt * 3.0) * 0.15 + sin(lt * 7.0) * 0.1;
+                float lz = sin(lt * 5.0) * 0.15 + sin(lt * 9.0) * 0.1;
+                vec3 fv = vec3(lx, 3., lz)-o.pos;
+
+                float fd = length(fv);
+                float flame = sat(dot(o.nor, fv/fd)/(fd*fd));
+                col += flame*10.*mix(FLAMECOL, vec3(1.), .5);
+
+                vec3 candleCol = mix(CANDLECOL, vec3(1.), inside);
+                vec3 wickCol = mix(candleCol, vec3(.2), S(.1, .2, o.uv.y));
+                col *= mix(wickCol, candleCol, o.t);
+                col += FLAMECOL*(1.-o.t)*S(.3, .8, o.uv.y)*2.;
+
+                vec3 r = reflect(camRay.d, o.nor);
+                float ref = sat(dot(r, fv/fd));
+                col += FLAMECOL*2.*pow(ref, inside*50.+4.)*o.t;
+            }
+
+            if(o.f>0.&&o.fd<o.d) {
+                vec3 p = camRay.o+camRay.d*o.fd;
+                vec3 n = FlameNormal(p, n);
+                float fresnel = sat(dot(n, -camRay.d));
+                float flame = 1.;
+                float wd = o.w;
+
+                flame *= S(-.1, .8, p.y);
+                flame *= mix(1., .1, S(.85, .0, wd)*pow(abs(fresnel), 5.));
+                flame *= S(7.0, 1., p.y);
+                flame *= S(4.0, 2., p.y);
+
+                float bottomFade = S(.1, .4, p.y);
+                float flameFlicker = 0.85 + 0.15 * sin(time * 25.0) * sin(time * 17.0);
+                col = mix(col, FLAMECOL*4. * flameFlicker, flame*fresnel*bottomFade);
+                float blue = S(.5, .1, p.y);
+                blue *= S(.7, .3, fresnel*fresnel);
+                col += FLAMEBLUE*blue*bottomFade;
+
+                float smokeStartY = 0.5;
+                float smokeIntensity = 1.0;
+                float smokeSpread = 5.;
+                float smokeY = p.y - smokeStartY;
+                float smoke = S(0.0, 1.5, smokeY);
+                smoke *= S(2.5, 0.0, smokeY);
+                float windOffsetX = gWindDir * gWindStrength * 0.8;
+                smoke *= S(smokeSpread, 0.2, abs(p.x - windOffsetX));
+                smoke *= smokeIntensity * (0.5 + gWindStrength * 1.0);
+                smoke *= (1.0 - fresnel * 0.5);
+                col = mix(col, vec3(0.03, 0.02, 0.01), smoke);
+            }
+
+            vec3 p = camRay.o + camRay.d*o.sd;
+            float y = p.y-1.;
+            float gw = sat(1.-y*y);
+            gw*=gw;
+            float glow = S(.25*gw, 0., o.s)*.5;
+            glow*=glow;
+            col = max(col, glow*FLAMECOL);
+
+            float haloTime = time;
+            float haloX = sin(haloTime * 3.0) * 0.15 + sin(haloTime * 7.0) * 0.1;
+            float haloZ = sin(haloTime * 5.0) * 0.15 + sin(haloTime * 9.0) * 0.1;
+            vec3 flameWorldPos = vec3(haloX, 1.5, haloZ);
+            vec3 flameDir = normalize(flameWorldPos - cam.p);
+            float angleDiff = max(0.0, dot(camRay.d, flameDir));
+            float halo = pow(angleDiff, 9.0) * 0.4;
+            float flicker = 0.9 + 0.1 * sin(haloTime * 12.0) * sin(haloTime * 7.3);
+            halo *= flicker;
+            col += FLAMECOL * halo;
+
+            return vec4(col, o.m);
+        }
+
+        void main() {
+            float t = time;
+
+            float gustPeriod = 15.0;
+            float gustStart = 6.0;
+            float gustPeak = 6.3;
+            float gustEnd = 7.5;
+            float gustFadeOut = 7.0;
+            float gustCycle = mod(t, gustPeriod);
+            float gustTrigger = S(gustStart, gustPeak, gustCycle) * S(gustEnd, gustFadeOut, gustCycle);
+            gWindStrength = gustTrigger * (0.6 + 0.1 * sin(t * 15.0));
+            gWindDir = sin(t * 0.5);
+
+            vec2 fragCoord = vTextureCoord * filterArea.xy;
+            vec2 res = dimensions;
+            vec2 uv = (2.*fragCoord - res) / res.y;
+            uv.y = -uv.y;  // Flip Y for PixiJS
+            m = vec2(0.5);
+
+            float turn = 0.;
+            float s = sin(turn);
+            float c = cos(turn);
+            mat3 rotX = mat3(c, 0., s, 0., 1., 0., s, 0., -c);
+
+            vec3 lookAt = vec3(0., lookAtY, 0.);
+            float dist = 9.;
+            vec3 pos = vec3(0., cameraY, -dist)*rotX;
+
+            CameraSetup(uv, pos, lookAt, 3.);
+            bg = vec3(0.);
+
+            t *= twopi;
+            float t2 = t;
+            float n = mix(N(floor(t2)), N(floor(t2+1.)), fract(t2));
+
+            vec4 info = render(uv, cam.ray, n);
+            vec3 finalCol = info.rgb;
+
+            float contrast = 1.1;
+            finalCol = (finalCol - 0.5) * contrast + 0.5;
+            float brightness = -0.1;
+            finalCol += brightness;
+            float saturation = 1.0;
+            float gray = dot(finalCol, vec3(0.299, 0.587, 0.114));
+            finalCol = mix(vec3(gray), finalCol, saturation);
+            finalCol = clamp(finalCol, 0.0, 1.0);
+
+            float bloomThreshold = 0.7;
+            float bloomStrength = 0.3;
+            vec3 bloom = max(vec3(0.0), finalCol - bloomThreshold) * bloomStrength;
+            finalCol += bloom;
+
+            gl_FragColor = vec4(finalCol, 1.);
+        }
+    </script>
+
+    <script id="burn-frag" type="x-shader/x-fragment">
+        // Burn effect shader - ported from https://www.shadertoy.com/view/tc2GWV
+        varying vec2 vTextureCoord;
+
+        uniform sampler2D uSampler;
+        uniform sampler2D paperTexture;
+        uniform vec4 filterArea;
+        uniform vec2 dimensions;
+        uniform float burnProgress;
+        uniform float noiseSeed;
+        uniform float burnNoiseScale;
+        uniform float burnEdgeWidth1;
+        uniform float burnEdgeWidth2;
+        uniform vec3 innerColor;
+        uniform vec3 outerColor;
+        uniform vec3 charColor;
+        uniform float colorNoise;
+
+        // Noise functions from Shadertoy
+        float r(in vec2 p) {
+            return fract(cos(p.x*42.98 + p.y*43.23) * 1127.53);
+        }
+
+        float n(in vec2 p) {
+            vec2 fn = floor(p);
+            vec2 sn = smoothstep(vec2(0.0), vec2(1.0), fract(p));
+
+            float h1 = mix(r(fn), r(fn + vec2(1.0,0.0)), sn.x);
+            float h2 = mix(r(fn + vec2(0.0,1.0)), r(fn + vec2(1.0)), sn.x);
+            return mix(h1, h2, sn.y);
+        }
+
+        float noise(in vec2 p) {
+            return n(p/32.0) * 0.58 +
+                   n(p/16.0) * 0.2  +
+                   n(p/8.0)  * 0.1  +
+                   n(p/4.0)  * 0.05 +
+                   n(p/2.0)  * 0.02 +
+                   n(p)      * 0.0125;
+        }
+
+        void main() {
+            vec2 uv = vTextureCoord;
+            vec2 fragCoord = uv * dimensions;
+
+            vec4 origin = texture2D(uSampler, uv);
+
+            // Add seed to noise for randomization
+            float noiseValue = noise(fragCoord * burnNoiseScale + noiseSeed * 100.0);
+
+            // Inner glow (yellow/white)
+            vec4 noise_InColor = vec4(noise(colorNoise * uv) * innerColor, 1.0) *
+                smoothstep(burnProgress + burnEdgeWidth1, burnProgress - burnEdgeWidth1, noiseValue);
+
+            vec4 fragColor = origin + noise_InColor;
+
+            // Outer glow (orange/red)
+            vec4 noise_OutColor = vec4(noise(colorNoise * uv) * outerColor, 1.0) *
+                smoothstep(burnProgress + burnEdgeWidth1 * 6.0, burnProgress, noiseValue);
+
+            fragColor += noise_OutColor;
+
+            // Charred area
+            fragColor.rgb = mix(fragColor.rgb, charColor,
+                smoothstep(burnProgress + burnEdgeWidth2, burnProgress - burnEdgeWidth2, noiseValue));
+
+            // Burned away area (transparent)
+            float alphaThreshold = 0.01;
+            if (fragColor.r <= alphaThreshold && fragColor.g <= alphaThreshold && fragColor.b <= alphaThreshold) {
+                fragColor = vec4(0.0, 0.0, 0.0, 0.0);
+            }
+
+            gl_FragColor = fragColor;
+        }
+    </script>
+
+    <script src="https://pixijs.download/v4.8.2/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    <!-- 一時的に無効化: TornPaper.js -->
+    <!-- <script src="https://cdn.jsdelivr.net/gh/happy358/TornPaper@v0.0.3/tornpaper.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
