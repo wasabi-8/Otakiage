@@ -90,7 +90,7 @@ body {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -70%);
     width: 70vw; /* レスポンシブ対応 */
     max-width: 800px;
     height: calc(70vw * 0.6); /* 横長: 5:3 ratio */

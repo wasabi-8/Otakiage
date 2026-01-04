@@ -542,6 +542,22 @@ function hideConfirmDialog() {
     }
 }
 
+// 白紙確認ダイアログ表示
+function showBlankConfirmDialog() {
+    const dialog = document.getElementById('blank-confirm-dialog');
+    if (dialog) {
+        dialog.classList.add('active');
+    }
+}
+
+// 白紙確認ダイアログ非表示
+function hideBlankConfirmDialog() {
+    const dialog = document.getElementById('blank-confirm-dialog');
+    if (dialog) {
+        dialog.classList.remove('active');
+    }
+}
+
 // ページ読み込み完了後に初期化
 window.addEventListener('load', () => {
     selectRandomPaperTexture(); // ランダムにテクスチャを選択
@@ -555,6 +571,8 @@ window.addEventListener('load', () => {
     const textInput = document.getElementById('text-input');
     const btnConfirmYes = document.getElementById('btn-confirm-yes');
     const btnConfirmNo = document.getElementById('btn-confirm-no');
+    const btnBlankYes = document.getElementById('btn-blank-yes');
+    const btnBlankNo = document.getElementById('btn-blank-no');
 
     if (btnWrite) {
         btnWrite.addEventListener('click', () => {
@@ -579,10 +597,18 @@ window.addEventListener('load', () => {
 
     if (btnBurn) {
         btnBurn.addEventListener('click', () => {
-            startBurnAnimation().catch(error => {
-                console.error('燃焼アニメーションエラー:', error);
-                switchScreen('top');
-            });
+            const inputValue = textInput ? textInput.value.trim() : '';
+
+            if (inputValue.length === 0) {
+                // 白紙の場合は確認ダイアログを表示
+                showBlankConfirmDialog();
+            } else {
+                // 入力済みの場合はそのまま燃やす
+                startBurnAnimation().catch(error => {
+                    console.error('燃焼アニメーションエラー:', error);
+                    switchScreen('top');
+                });
+            }
         });
     }
 
@@ -628,6 +654,25 @@ window.addEventListener('load', () => {
     if (btnConfirmNo) {
         btnConfirmNo.addEventListener('click', () => {
             hideConfirmDialog();
+            // 入力画面のまま継続
+        });
+    }
+
+    // 白紙確認ダイアログの「はい」ボタン
+    if (btnBlankYes) {
+        btnBlankYes.addEventListener('click', () => {
+            hideBlankConfirmDialog();
+            startBurnAnimation().catch(error => {
+                console.error('燃焼アニメーションエラー:', error);
+                switchScreen('top');
+            });
+        });
+    }
+
+    // 白紙確認ダイアログの「いいえ」ボタン
+    if (btnBlankNo) {
+        btnBlankNo.addEventListener('click', () => {
+            hideBlankConfirmDialog();
             // 入力画面のまま継続
         });
     }
