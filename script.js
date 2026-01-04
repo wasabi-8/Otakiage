@@ -42,6 +42,11 @@ function isMobile() {
     return window.innerWidth <= ANIMATION_PARAMS.mobileBreakpoint;
 }
 
+// Android判定
+function isAndroid() {
+    return /android/i.test(navigator.userAgent);
+}
+
 // カメラ距離を取得
 function getCameraDist() {
     return isMobile() ? ANIMATION_PARAMS.cameraDistMobile : ANIMATION_PARAMS.cameraDistPC;
@@ -104,6 +109,7 @@ class CandleFlameFilter extends PIXI.Filter {
         this.uniforms.lookAtY = FLAME_PARAMS.lookAtY;
         this.uniforms.swaySpeed = FLAME_PARAMS.swaySpeed;
         this.uniforms.cameraDist = getCameraDist();
+        this.uniforms.haloEnabled = isAndroid() ? 0.0 : 1.0;
         this.time = 0.0;
     }
 

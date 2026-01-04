@@ -55,6 +55,7 @@
         uniform float lookAtY;
         uniform float swaySpeed;
         uniform float cameraDist;
+        uniform float haloEnabled;
 
         #define FLAMECOL vec3(.99, .6, .35)
         #define FLAMEBLUE vec3(.1, .1, 1.)
@@ -397,88 +398,95 @@ for(float i=0.; i<1.; i+=1./20.) {
             glow*=glow;
             col = max(col, glow*FLAMECOL);
 
-            float haloTime = time;
-            float haloX = sin(haloTime * 3.0) * 0.15 + sin(haloTime * 7.0) * 0.1;
-            float haloZ = sin(haloTime * 5.0) * 0.15 + sin(haloTime * 9.0) * 0.1;
-            vec3 flameWorldPos = vec3(haloX, 1.5, haloZ);
-            vec3 flameDir = normalize(flameWorldPos - cam.p);
-            float angleDiff = max(0.0, dot(camRay.d, flameDir));
-            float halo = pow(angleDiff, 9.0) * 0.4;
-            float flicker = 0.9 + 0.1 * sin(haloTime * 12.0) * sin(haloTime * 7.3);
-            halo *= flicker;
-            col += FLAMECOL * halo;
-
-// [追加] ボケ玉エフェクト（大きな柔らかいグロー）
-            float bokehTime = time * 0.3;
-            for (float i = 0.0; i < 10.0; i++) {
-                vec2 seed = Hash12_Spark(i + 50.0);
-                vec2 seed2 = Hash12_Spark(i + 150.0);
-                float life = fract(bokehTime + seed.x);
-                
-                float bokehX = (seed2.x - 0.4) * 0.2 + sin(life * 4.0 + i) * 0.15;
-                float bokehY = -0.5 + life * 2.0;
-                vec2 bokehUV = vec2(bokehX, bokehY);
-                
-                vec2 diff = uv - bokehUV;
-                float angle = seed2.x * 6.28;
-                float stretch = 0.5 + seed2.y * 0.5;
-                float cosA = cos(angle);
-                float sinA = sin(angle);
-                vec2 rotated = vec2(
-                    diff.x * cosA - diff.y * sinA,
-                    diff.x * sinA + diff.y * cosA
-                );
-                rotated.y *= stretch;
-                float bokehDist = length(rotated);
-                
-                float size = 0.001 + seed.y * 0.005;
-                float bokehBright = size / (bokehDist * bokehDist + 0.0001);
-                bokehBright = clamp(bokehBright, 0.0, 1.0);
-                bokehBright *= 0.7 + 0.3 * sin(time * 8.0 + i * 3.0);
-                bokehBright *= smoothstep(0.0, 0.1, life);
-                bokehBright *= smoothstep(1.0, 0.5, life);
-                
-                col += FLAMECOL * bokehBright * 0.15;
+            // haloエフェクト（Androidでは無効化可能）
+            if (haloEnabled > 0.5) {
+                float haloTime = time;
+                float haloX = sin(haloTime * 3.0) * 0.15 + sin(haloTime * 7.0) * 0.1;
+                float haloZ = sin(haloTime * 5.0) * 0.15 + sin(haloTime * 9.0) * 0.1;
+                vec3 flameWorldPos = vec3(haloX, 1.5, haloZ);
+                vec3 flameDir = normalize(flameWorldPos - cam.p);
+                float angleDiff = max(0.0, dot(camRay.d, flameDir));
+                float halo = pow(angleDiff, 9.0) * 0.4;
+                float flicker = 0.9 + 0.1 * sin(haloTime * 12.0) * sin(haloTime * 7.3);
+                halo *= flicker;
+                col += FLAMECOL * halo;
             }
 
-// [追加] 火の粉エフェクト（小さい点）
-            float sparkTime = time * 0.05;
-            for (float i = 0.0; i < 20.0; i++) {
-                vec2 seed = Hash12_Spark(i + 1.0);
-                vec2 seed2 = Hash12_Spark(i + 100.0);
-                float life = fract(sparkTime + seed.x);
-                
-                float sparkX = (seed.y - 0.5) * 0.3 + sin(life * 6.0 + i) * 0.05;
-                float sparkY = 0.3 + life * 1.5;
-                vec2 sparkUV = vec2(sparkX, sparkY);
-                
-                vec2 diff = uv - sparkUV;
-                float angle = seed2.x * 6.28;
-                float stretch = 0.8 + seed2.y * 0.2;  // ←【変更】0.8〜1.0（ほぼ丸）
-                float cosA = cos(angle);
-                float sinA = sin(angle);
-                vec2 rotated = vec2(
-                    diff.x * cosA - diff.y * sinA,
-                    diff.x * sinA + diff.y * cosA
-                );
-                rotated.y *= stretch;
-                float sparkDist = length(rotated);
-                
-                // フェードイン・アウト
-                float fade = smoothstep(0.0, 0.1, life) * smoothstep(1.0, 0.5, life);
-                fade *= 0.7 + 0.3 * sin(time * 10.0 + i * 5.0);
-                
-                // コア（中心：小さく明るい白〜黄）
-                float coreSize = 0.001 + seed.y * 0.005;  // ←【変更】小さく
-                float core = smoothstep(coreSize, 0.0, sparkDist);
-                vec3 coreColor = vec3(1.0, 0.9, 0.7);
-                
-                // グロー（周辺：大きく柔らかい赤〜オレンジ）
-                float glowSize = 0.004 + seed.y * 0.016;  // ←【変更】小さく
-                float glow = smoothstep(glowSize, 0.0, sparkDist) * 0.5;
-                vec3 glowColor = vec3(1.0, 0.25, 0.05);
-                
-                col += (coreColor * core + glowColor * glow) * fade;
+// [追加] ボケ玉エフェクト（大きな柔らかいグロー）- Androidでは無効
+            if (haloEnabled > 0.5) {
+                float bokehTime = time * 0.3;
+                for (float i = 0.0; i < 10.0; i++) {
+                    vec2 seed = Hash12_Spark(i + 50.0);
+                    vec2 seed2 = Hash12_Spark(i + 150.0);
+                    float life = fract(bokehTime + seed.x);
+
+                    float bokehX = (seed2.x - 0.4) * 0.2 + sin(life * 4.0 + i) * 0.15;
+                    float bokehY = -0.5 + life * 2.0;
+                    vec2 bokehUV = vec2(bokehX, bokehY);
+
+                    vec2 diff = uv - bokehUV;
+                    float angle = seed2.x * 6.28;
+                    float stretch = 0.5 + seed2.y * 0.5;
+                    float cosA = cos(angle);
+                    float sinA = sin(angle);
+                    vec2 rotated = vec2(
+                        diff.x * cosA - diff.y * sinA,
+                        diff.x * sinA + diff.y * cosA
+                    );
+                    rotated.y *= stretch;
+                    float bokehDist = length(rotated);
+
+                    float size = 0.001 + seed.y * 0.005;
+                    float bokehBright = size / (bokehDist * bokehDist + 0.0001);
+                    bokehBright = clamp(bokehBright, 0.0, 1.0);
+                    bokehBright *= 0.7 + 0.3 * sin(time * 8.0 + i * 3.0);
+                    bokehBright *= smoothstep(0.0, 0.1, life);
+                    bokehBright *= smoothstep(1.0, 0.5, life);
+
+                    col += FLAMECOL * bokehBright * 0.15;
+                }
+            }
+
+// [追加] 火の粉エフェクト（小さい点）- Androidでは無効
+            if (haloEnabled > 0.5) {
+                float sparkTime = time * 0.05;
+                for (float i = 0.0; i < 20.0; i++) {
+                    vec2 seed = Hash12_Spark(i + 1.0);
+                    vec2 seed2 = Hash12_Spark(i + 100.0);
+                    float life = fract(sparkTime + seed.x);
+
+                    float sparkX = (seed.y - 0.5) * 0.3 + sin(life * 6.0 + i) * 0.05;
+                    float sparkY = 0.3 + life * 1.5;
+                    vec2 sparkUV = vec2(sparkX, sparkY);
+
+                    vec2 diff = uv - sparkUV;
+                    float angle = seed2.x * 6.28;
+                    float stretch = 0.8 + seed2.y * 0.2;
+                    float cosA = cos(angle);
+                    float sinA = sin(angle);
+                    vec2 rotated = vec2(
+                        diff.x * cosA - diff.y * sinA,
+                        diff.x * sinA + diff.y * cosA
+                    );
+                    rotated.y *= stretch;
+                    float sparkDist = length(rotated);
+
+                    // フェードイン・アウト
+                    float fade = smoothstep(0.0, 0.1, life) * smoothstep(1.0, 0.5, life);
+                    fade *= 0.7 + 0.3 * sin(time * 10.0 + i * 5.0);
+
+                    // コア（中心：小さく明るい白〜黄）
+                    float coreSize = 0.001 + seed.y * 0.005;
+                    float core = smoothstep(coreSize, 0.0, sparkDist);
+                    vec3 coreColor = vec3(1.0, 0.9, 0.7);
+
+                    // グロー（周辺：大きく柔らかい赤〜オレンジ）
+                    float glowSize = 0.004 + seed.y * 0.016;
+                    float glow = smoothstep(glowSize, 0.0, sparkDist) * 0.5;
+                    vec3 glowColor = vec3(1.0, 0.25, 0.05);
+
+                    col += (coreColor * core + glowColor * glow) * fade;
+                }
             }
 
             return vec4(col, o.m);
