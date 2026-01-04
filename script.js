@@ -637,23 +637,3 @@ window.addEventListener('load', () => {
 window.addEventListener('resize', updateFlamePosition);
 window.addEventListener('orientationchange', updateFlamePosition);
 
-// モバイルキーボード表示検知
-if (window.visualViewport && isMobile()) {
-    const handleViewportChange = () => {
-        const screenInput = document.getElementById('screen-input');
-        if (!screenInput) return;
-
-        // キーボードが表示されているかどうかを判定
-        // visualViewport.height が window.innerHeight より小さい場合はキーボード表示中
-        const keyboardVisible = window.visualViewport.height < window.innerHeight * 0.8;
-
-        if (keyboardVisible) {
-            screenInput.classList.add('keyboard-visible');
-        } else {
-            screenInput.classList.remove('keyboard-visible');
-        }
-    };
-
-    window.visualViewport.addEventListener('resize', handleViewportChange);
-    window.visualViewport.addEventListener('scroll', handleViewportChange);
-}
