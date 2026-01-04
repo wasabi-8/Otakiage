@@ -222,21 +222,21 @@ body {
 @media screen and (max-width: 768px) {
     /* フォントサイズ調整 */
     .ui-button {
-        font-size: 2rem;
+        font-size: 1.5rem;
         padding: 12px 35px;
     }
 
     #text-input {
-        font-size: 2rem;
+        font-size: 20px;
     }
 
     .dialog-message {
-        font-size: 1.5rem;
+        font-size: 18px;
         margin: 0 0 20px 0;
     }
 
     .dialog-button {
-        font-size: 1.25rem;
+        font-size: 20px;
         padding: 12px 30px;
     }
 
@@ -264,15 +264,15 @@ body {
     }
 
     #text-input {
-        font-size: 1.5rem;
+        font-size: 18px;
     }
 
     .dialog-message {
-        font-size: 1.25rem;
+        font-size: 16px;
     }
 
     .dialog-button {
-        font-size: 1rem;
+        font-size: 18px;
         padding: 10px 20px;
     }
 
