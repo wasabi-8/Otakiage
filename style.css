@@ -247,6 +247,7 @@ body {
 
     /* 紙のサイズ調整 */
     #paper-container {
+        top: 40%;  /* 例：上に寄せる */
         width: 85vw;
         height: calc(85vw * 0.6);
     }
