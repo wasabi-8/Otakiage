@@ -5,7 +5,7 @@ const burnFrag = document.querySelector("#burn-frag").textContent;
 const FLAME_PARAMS = Object.freeze({
     cameraY: 2.5,   // 傾斜
     lookAtY: 1.5,   // 縦位置
-    swaySpeed: 3.0  // 揺れ速度
+    swaySpeed: 3.0  // 火の先端の揺れ速度
 });
 
 // Burn effect parameters
@@ -178,7 +178,7 @@ class Application extends PIXI.Application {
             this.isResized = false;
         }
 
-        this.flame.time += 0.1 * delta;
+        this.flame.time += 0.03 * delta;
     }
 }
 

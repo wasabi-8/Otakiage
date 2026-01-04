@@ -208,7 +208,7 @@
         }
 
         de fmap(vec3 p, float n) {
-            float t = time*2.;
+            float t = time*1.;
             de o;
             o.m = 1.;
             p.z *= 1.5;
@@ -223,25 +223,29 @@
             float top = baseTop + gWindStrength * 5.5;
             float windBendBase = gWindStrength * gWindDir * 20.8;
 
-            for(float i=0.; i<1.; i+=1./20.) {
-                float y = mix(.1, top, i);
-                float baseSwing = pow(abs(sin(y-t*swaySpeed)), 3.) * .5 * n * p.y * n * n * n;
-                float bendStart = 1.;
-                float bendFactor = max(0.0, (i - bendStart) / (1.0 - bendStart));
-                float windBend = windBendBase * bendFactor;
-                float x = baseSwing + windBend;
+for(float i=0.; i<1.; i+=1./20.) {
+    float y = mix(.1, top, i);
+    float baseSwing = pow(abs(sin(y-t*swaySpeed)), 3.) * .5 * n * p.y * n * n * n;
+    float bendStart = 1.;
+    float bendFactor = max(0.0, (i - bendStart) / (1.0 - bendStart));
+    float windBend = windBendBase * bendFactor;
+    float x = baseSwing + windBend;
 
-                float size = mix(.25, .07, i*i);
-                float sizeFlicker = 1.0 + 0.1 * sin(i * 50.0 + t * 15.0) * sin(i * 30.0 + t * 11.0);
-                size *= sizeFlicker;
-                float smth = mix(.5, .05, i*i);
+    // Z軸（手前・奥）の揺れを追加
+    float baseSwingZ = pow(abs(sin(y - t * swaySpeed * 0.7 + 1.5)), 3.) * .3 * n * p.y * n * n * n;
+    float z = baseSwingZ;
 
-                float skipThreshold = 0.75 - gWindStrength * 0.2;
-                float skipNoise = N(i * 137.0 + floor(t * 4.0));
-                if(i > skipThreshold && skipNoise > 0.5 && gWindStrength > 0.3) continue;
+    float size = mix(.25, .07, i*i);
+    float sizeFlicker = 1.0 + 0.1 * sin(i * 50.0 + t * 15.0) * sin(i * 30.0 + t * 11.0);
+    size *= sizeFlicker;
+    float smth = mix(.5, .05, i*i);
 
-                flame = smin(flame, sdSphere(p, vec3(x, y, .0), size), smth).x;
-            }
+    float skipThreshold = 0.75 - gWindStrength * 0.2;
+    float skipNoise = N(i * 137.0 + floor(t * 4.0));
+    if(i > skipThreshold && skipNoise > 0.5 && gWindStrength > 0.3) continue;
+
+    flame = smin(flame, sdSphere(p, vec3(x, y, z), size), smth).x;
+}
 
             d = min(d, flame);
             d = max(d, -sdSphere(p, vec3(-.2, -.5, .0), .5));
@@ -535,7 +539,7 @@
             // ディザリング（Android等の低精度GPUでのバンディング対策）
             vec2 ditherCoord = gl_FragCoord.xy;
             float dither = fract(sin(dot(ditherCoord, vec2(12.9898, 78.233))) * 43758.5453);
-            finalCol += (dither - 0.5) / 128.0;
+            finalCol += (dither - 0.5) / 64.0;
 
             gl_FragColor = vec4(finalCol, 1.);
         }
