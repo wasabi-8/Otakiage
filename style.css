@@ -217,16 +217,18 @@ body {
 }
 
 /* ========================================
-   モバイルキーボード表示時
+   モバイル入力画面（常に上寄せ）
    ======================================== */
-#screen-input.keyboard-visible #paper-container {
-    top: 50%;
-    transform: translate(-50%, 0);
-}
+@media screen and (max-width: 768px) {
+    #screen-input #paper-container {
+        top: 10%;
+        transform: translate(-50%, 0);
+    }
 
-#screen-input.keyboard-visible .ui-button {
-    bottom: auto;
-    top: calc(15% + 55vw);
+    #screen-input .ui-button {
+        bottom: auto;
+        top: calc(10% + 55vw);
+    }
 }
 
 /* ========================================
