@@ -47,6 +47,11 @@ function isAndroid() {
     return /android/i.test(navigator.userAgent);
 }
 
+// デバッグ用：Android検出確認（後で削除）
+if (isAndroid()) {
+    document.title = 'お焚き上げ [Android]';
+}
+
 // カメラ距離を取得
 function getCameraDist() {
     return isMobile() ? ANIMATION_PARAMS.cameraDistMobile : ANIMATION_PARAMS.cameraDistPC;
