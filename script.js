@@ -48,9 +48,22 @@ function isAndroid() {
     return /android/i.test(navigator.userAgent);
 }
 
-// デバッグ用：Android検出確認（後で削除）
+// Android警告ダイアログ表示
 if (isAndroid()) {
-    document.title = 'お焚き上げ [Android]';
+    window.addEventListener('load', () => {
+        const androidWarning = document.getElementById('android-warning');
+        const btnClose = document.getElementById('btn-android-close');
+
+        if (androidWarning) {
+            androidWarning.classList.add('active');
+        }
+
+        if (btnClose) {
+            btnClose.addEventListener('click', () => {
+                androidWarning.classList.remove('active');
+            });
+        }
+    });
 }
 
 // カメラ距離を取得

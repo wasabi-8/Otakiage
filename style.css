@@ -183,6 +183,13 @@ body {
     margin: 0 0 30px 0;
 }
 
+.dialog-sub-message {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Yu Mincho', 'YuMincho', 'Hiragino Mincho Pro', serif;
+    margin: -20px 0 30px 0;
+}
+
 .dialog-buttons {
     display: flex;
     gap: 20px;
