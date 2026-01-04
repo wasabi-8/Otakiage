@@ -220,7 +220,7 @@ body {
    モバイルキーボード表示時
    ======================================== */
 #screen-input.keyboard-visible #paper-container {
-    top: 15%;
+    top: 20%;
     transform: translate(-50%, 0);
 }
 
