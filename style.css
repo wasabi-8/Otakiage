@@ -247,7 +247,7 @@ body {
 
     /* 紙のサイズ調整 */
     #paper-container {
-    transform: translate(-50%, -70%);
+    transform: translate(-50%, -80%);
         bottom: 15%;
         width: 85vw;
         height: calc(85vw * 0.6);
