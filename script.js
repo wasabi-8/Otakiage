@@ -33,8 +33,9 @@ const ANIMATION_PARAMS = Object.freeze({
     cameraDistMobile: 12.0,
     mobileBreakpoint: 768,
     // 解像度設定（調整可能）
-    resolutionPC: 2.0,      // PC: 高解像度
-    resolutionMobile: 1.0   // モバイル: パフォーマンス優先
+    resolutionPC: 2.0,       // PC: 高解像度
+    resolutionMobile: 1.0,   // iOS等: 標準
+    resolutionAndroid: 0.5   // Android: パフォーマンス優先
 });
 
 // モバイル判定
@@ -140,11 +141,15 @@ class Application extends PIXI.Application {
 
     constructor() {
 
-        // 解像度設定（モバイルはパフォーマンス優先で低解像度）
+        // 解像度設定（Android/モバイルはパフォーマンス優先で低解像度）
         if (window.devicePixelRatio > 1) {
-            PIXI.settings.RESOLUTION = isMobile()
-                ? ANIMATION_PARAMS.resolutionMobile
-                : ANIMATION_PARAMS.resolutionPC;
+            if (isAndroid()) {
+                PIXI.settings.RESOLUTION = ANIMATION_PARAMS.resolutionAndroid;
+            } else if (isMobile()) {
+                PIXI.settings.RESOLUTION = ANIMATION_PARAMS.resolutionMobile;
+            } else {
+                PIXI.settings.RESOLUTION = ANIMATION_PARAMS.resolutionPC;
+            }
         }
 
         PIXI.settings.PRECISION_FRAGMENT = "highp";
