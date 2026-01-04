@@ -245,13 +245,10 @@ body {
         margin: 0 20px;
     }
 
-    #screen-input .ui-button {
-        bottom: 15%;
-    }
-
     /* 紙のサイズ調整 */
     #paper-container {
-        top: 40%;  /* 例：上に寄せる */
+        top: 30%;  /* 例：上に寄せる */
+        bottom: 15%;
         width: 85vw;
         height: calc(85vw * 0.6);
     }
