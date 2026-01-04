@@ -217,17 +217,11 @@ body {
 }
 
 /* ========================================
-   モバイル入力画面（常に上寄せ）
+   モバイル入力画面（紙を下寄せ）
    ======================================== */
 @media screen and (max-width: 768px) {
-    #screen-input #paper-container {
-        top: 10%;
-        transform: translate(-50%, 0);
-    }
-
-    #screen-input .ui-button {
-        bottom: auto;
-        top: calc(10% + 55vw);
+    #paper-container {
+        top: 55% !important;
     }
 }
 
