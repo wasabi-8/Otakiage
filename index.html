@@ -3,7 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文字燃やし</title>
+    <title>文字燃やし | 紙に書いた文字を燃やす</title>
+    <meta name="description" content="文字燃やしは、紙に書いた文字を擬似的に燃やし、心の整理をするためのサイトです。縁切り、厄除け、過去との決別、自分なりの小さな儀式、おまじないにご活用ください。">
+    <meta name="keywords" content="願い事, 縁切り, 厄除け, 呪い, おまじない, お焚き上げ, 御焚上, 紙, 燃やす, 文字, 言葉, ストレス">
+    <link rel="canonical" href="https://wasabi-8.github.io/mojimoyashi/">
+
+    <!-- Favicon -->
+    <link rel="icon" href="favicon.png" type="image/png">
+
+    <!-- OGP (SNSシェア用) -->
+    <meta property="og:title" content="文字燃やし | 紙に書いた文字を燃やす">
+    <meta property="og:description" content="文字燃やしは、紙に書いた文字を擬似的に燃やし、心の整理をするためのサイトです。縁切り、厄除け、過去との決別、自分なりの小さな儀式、おまじないにご活用ください。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://wasabi-8.github.io/mojimoyashi/">
+    <meta property="og:site_name" content="文字燃やし">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:image" content="https://wasabi-8.github.io/mojimoyashi/ogp.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="文字燃やし | 紙に書いた文字を燃やす">
+    <meta name="twitter:description" content="文字燃やしは、紙に書いた文字を擬似的に燃やし、心の整理をするためのサイトです。">
+    <meta name="twitter:image" content="https://wasabi-8.github.io/mojimoyashi/ogp.png">
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -552,7 +574,7 @@ for(float i=0.; i<1.; i+=1./20.) {
             vec4 info = render(uv, cam.ray, n);
             vec3 finalCol = info.rgb;
 
-            float contrast = 1.1;
+            float contrast = 1.0;
             finalCol = (finalCol - 0.5) * contrast + 0.5;
             float brightness = -0.1;
             finalCol += brightness;
@@ -656,5 +678,9 @@ for(float i=0.; i<1.; i+=1./20.) {
     <!-- <script src="https://cdn.jsdelivr.net/gh/happy358/TornPaper@v0.0.3/tornpaper.min.js"></script> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="script.js"></script>
+
+    <!-- GoatCounter -->
+    <script data-goatcounter="https://mojimoyashi.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

@@ -48,6 +48,21 @@ function isAndroid() {
     return /android/i.test(navigator.userAgent);
 }
 
+// 紙テクスチャのプリロード
+const PAPER_TEXTURES = ['textures/paper1.jpg', 'textures/paper2.jpg', 'textures/paper3.jpg', 'textures/paper4.jpg'];
+const preloadedImages = [];
+
+function preloadPaperTextures() {
+    PAPER_TEXTURES.forEach(src => {
+        const img = new Image();
+        img.src = src;
+        preloadedImages.push(img);
+    });
+}
+
+// ページ読み込み時にプリロード開始
+preloadPaperTextures();
+
 // Android警告ダイアログ表示
 if (isAndroid()) {
     window.addEventListener('load', () => {
@@ -249,12 +264,11 @@ function switchScreen(newState) {
 
 // ランダムに紙のテクスチャを選択
 function selectRandomPaperTexture() {
-    const paperCount = 4; // paper1.jpg ~ paper4.jpg
-    const randomIndex = Math.floor(Math.random() * paperCount) + 1;
+    const randomIndex = Math.floor(Math.random() * PAPER_TEXTURES.length);
     const paperElement = document.querySelector('.paper');
 
     if (paperElement) {
-        paperElement.style.backgroundImage = `url('textures/paper${randomIndex}.jpg')`;
+        paperElement.style.backgroundImage = `url('${PAPER_TEXTURES[randomIndex]}')`;
     }
 }
 
