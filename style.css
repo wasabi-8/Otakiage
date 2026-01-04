@@ -245,6 +245,10 @@ body {
         margin: 0 20px;
     }
 
+    #screen-input .ui-button {
+        bottom: 15%;
+    }
+
     /* 紙のサイズ調整 */
     #paper-container {
         top: 40%;  /* 例：上に寄せる */
